@@ -225,6 +225,12 @@ exports('AddElement', function(menuId, pageId, elementType, spec, callback)
     local page; page, failure = PageFor(menu, pageId); if failure then return failure end
     local invalid = MenuValidation.Element(elementType, spec, 'spec')
     if invalid then return invalid end
+    if spec.section then
+        local parent = page.elements[pageId .. '/' .. spec.section]
+        if not parent or parent.public.type ~= 'accordion' then
+            return MenuResults.Err('invalid_input', 'section must reference an existing accordion on this page.')
+        end
+    end
     if callback ~= nil and not IsCallable(callback) then return MenuResults.Err('invalid_input', 'callback must be callable.') end
     if Count(page.elements) >= limits.elements then return MenuResults.Err('limit_exceeded', 'Element limit reached.') end
     local elementId = pageId .. '/' .. spec.key

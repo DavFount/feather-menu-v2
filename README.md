@@ -279,6 +279,7 @@ end)).elementId
 | `key` | Required | Unique key within this page. |
 | `slot` | `'content'` | `'header'`, `'content'`, or `'footer'`. |
 | `row` | Omitted | Give consecutive elements the same safe row key to place them side by side at equal widths. Rows stack vertically on narrow menus. |
+| `section` | Omitted | Place a content element inside an existing `accordion` on the same page by its key. Add the accordion first. |
 | `label` | Omitted | Visible label on elements that display one; at most 256 UTF-8 bytes. |
 | `disabled` | `false` | Prevent interaction. Display-only elements have no interaction to disable. |
 | `persist` | `true` | For `change` events, store the validated value in Lua menu state. With `false`, your callback must accept/reject the proposed value and call `SetElementValue` or `UpdateElement`. |
@@ -291,6 +292,17 @@ Use rows for compact groups such as a date or related actions:
 Menu:AddElement(menuId, pageId, 'dropdown', { key = 'month', row = 'birthday', label = 'Month', value = 1, options = months })
 Menu:AddElement(menuId, pageId, 'dropdown', { key = 'day', row = 'birthday', label = 'Day', value = 1, options = days })
 Menu:AddElement(menuId, pageId, 'dropdown', { key = 'year', row = 'birthday', label = 'Year', value = 1874, options = years })
+```
+
+Use an accordion to tuck optional controls away without resetting their values. `value = false` starts collapsed; opening and closing is local UI state and does not invoke a callback.
+
+```lua
+Menu:AddElement(menuId, pageId, 'accordion', { key = 'fine-tune', label = 'Fine tune', value = false })
+Menu:AddElement(menuId, pageId, 'slider', {
+    key = 'depth', section = 'fine-tune', label = 'Depth', value = 0, min = -1, max = 1, step = 0.05
+}, function(event)
+    print('Depth:', event.value)
+end)
 ```
 
 Interactive buttons, toggles, checkboxes, choice controls, grids, image controls, and page arrows also accept optional `sound = { action, soundset }`. Input, textarea, number, slider, and display elements do not accept that field. Sound is played by Lua after an accepted interaction and a successful callback.
