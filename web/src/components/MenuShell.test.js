@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import MenuShell from './MenuShell.vue'
 import { post } from '../api'
+import { controls, routeInput } from '../input'
 
 vi.mock('../api', () => ({ post: vi.fn(() => Promise.resolve({ ok: true })) }))
 
@@ -39,6 +40,34 @@ describe('MenuShell keyboard ownership', () => {
     vi.clearAllMocks()
   })
   afterEach(() => { document.body.innerHTML = '' })
+
+  it('keeps fine-tuning controls mounted and out of navigation while collapsed', async () => {
+    const value = menu()
+    value.pages.selectors.elementOrder = ['section', 'detail']
+    value.pages.selectors.elements = {
+      section: { elementId: 'section', key: 'fine-tune', type: 'accordion', data: { key: 'fine-tune', label: 'Fine tune', value: false } },
+      detail: { elementId: 'detail', key: 'depth', type: 'slider', data: { key: 'depth', section: 'fine-tune', label: 'Depth', value: 0, min: -1, max: 1, step: .05 } },
+    }
+    const wrapper = mount(MenuShell, { props: { menu: value }, attachTo: document.body })
+    await nextTick()
+    const trigger = wrapper.get('.accordion-trigger')
+    expect(trigger.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.get('.accordion-panel').attributes('hidden')).toBeDefined()
+    expect(controls(wrapper.element)).not.toContain(wrapper.get('input[type="range"]').element)
+    trigger.element.focus()
+    routeInput(wrapper.element, 'accept')
+    await nextTick()
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    const slider = wrapper.get('input[type="range"]')
+    slider.element.value = '.35'
+    await slider.trigger('input')
+    await trigger.trigger('click')
+    expect(wrapper.get('input[type="range"]').element.value).toBe('0.35')
+    expect(controls(wrapper.element)).not.toContain(slider.element)
+    await trigger.trigger('click')
+    expect(wrapper.get('input[type="range"]').element.value).toBe('0.35')
+    wrapper.unmount()
+  })
 
   it('lets an open dropdown own arrows and Escape', async () => {
     const wrapper = mount(MenuShell, { props: { menu: menu() }, attachTo: document.body })
@@ -124,5 +153,23 @@ describe('MenuShell keyboard ownership', () => {
     const row = wrapper.get('.element-row')
     expect(row.findAll('.element-anchor')).toHaveLength(3)
     expect(row.attributes('style')).toContain('--row-columns: 3')
+  })
+
+  it('keeps footer camera controls outside the scrolling content', () => {
+    const value = menu()
+    value.pages.selectors.elementOrder = ['view', 'fov', 'rotate', 'left', 'right']
+    value.pages.selectors.elements = {
+      view: { elementId: 'view', type: 'dropdown', data: { key: 'view', slot: 'footer', label: 'Camera view', value: 'full', options: [{ value: 'full', label: 'Full Body' }] } },
+      fov: { elementId: 'fov', type: 'slider', data: { key: 'fov', slot: 'footer', label: 'Camera FOV', value: 50, min: 10, max: 80, step: .25 } },
+      rotate: { elementId: 'rotate', type: 'subheader', data: { key: 'rotate', slot: 'footer', value: 'Rotate' } },
+      left: { elementId: 'left', type: 'button', data: { key: 'left', slot: 'footer', row: 'rotation', label: '← Left' } },
+      right: { elementId: 'right', type: 'button', data: { key: 'right', slot: 'footer', row: 'rotation', label: 'Right →' } },
+    }
+    const wrapper = mount(MenuShell, { props: { menu: value } })
+    expect(wrapper.find('.content [data-element-id]').exists()).toBe(false)
+    expect(wrapper.find('footer [data-element-id="view"]').exists()).toBe(true)
+    expect(wrapper.find('footer [data-element-id="fov"]').exists()).toBe(true)
+    expect(wrapper.get('footer .element-row').findAll('button')).toHaveLength(2)
+    wrapper.unmount()
   })
 })

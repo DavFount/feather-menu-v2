@@ -8,6 +8,7 @@ import { controls, startGamepad } from '../input'
 const props = defineProps({ menu: { type: Object, required: true } })
 const shell = ref(null)
 const pageUi = { drafts: new Map(), pages: new Map() }
+const openSections = ref({})
 provide('menuPageUi', pageUi)
 const dragging = ref(false)
 const position = ref()
@@ -28,6 +29,32 @@ function groupedSlot(slot) {
     else groups.push({ key: row ? `${row}:${element.elementId}` : element.elementId, row, elements: [element] })
   }
   return groups
+}
+function contentGroups() {
+  const groups = []
+  const sections = new Map()
+  for (const element of inSlot('content')) {
+    if (element.type === 'accordion') {
+      const group = { key: element.elementId, accordion: element, children: [] }
+      groups.push(group)
+      sections.set(element.key || element.data.key, group)
+      continue
+    }
+    const target = sections.get(element.data.section)?.children || groups
+    const row = element.data.row
+    const previous = target[target.length - 1]
+    if (row && previous?.row === row) previous.elements.push(element)
+    else target.push({ key: row ? `${row}:${element.elementId}` : element.elementId, row, elements: [element] })
+  }
+  return groups
+}
+function sectionOpen(element) {
+  const key = `${props.menu.activePageId}/${element.elementId}`
+  return openSections.value[key] ?? element.data.value === true
+}
+function toggleSection(element) {
+  const key = `${props.menu.activePageId}/${element.elementId}`
+  openSections.value[key] = !sectionOpen(element)
 }
 const theme = computed(() => props.menu.config.theme || {})
 const size = computed(() => props.menu.config.size || {})
@@ -154,7 +181,7 @@ watch(() => props.menu.activePageId, async (pageId, previousPageId) => {
   if (content) content.scrollTop = saved?.scroll || 0
   const anchor = saved?.elementId && [...shell.value.querySelectorAll('[data-element-id]')].find((node) => node.dataset.elementId === saved.elementId)
   const remembered = anchor?.querySelectorAll('[data-menu-control]')[saved?.controlIndex || 0]
-  const target = (remembered && !remembered.matches(':disabled') && remembered) || anchor?.querySelector('[data-menu-control]:not(:disabled)') || controls(shell.value).find((node) => node.closest('.content')) || shell.value.querySelector('.stepper-next:not(:disabled), .navigation .active:not(:disabled)') || controls(shell.value)[0]
+  const target = (remembered && !remembered.matches(':disabled') && !remembered.closest('[hidden]') && remembered) || [...(anchor?.querySelectorAll('[data-menu-control]:not(:disabled)') || [])].find((node) => !node.closest('[hidden]')) || controls(shell.value).find((node) => node.closest('.content')) || shell.value.querySelector('.stepper-next:not(:disabled), .navigation .active:not(:disabled)') || controls(shell.value)[0]
   target?.focus({ preventScroll: true })
 })
 watch(() => props.menu.revision, async () => {
@@ -192,8 +219,22 @@ onUnmounted(() => { stopGamepad?.(); window.removeEventListener('pointermove', m
     </div>
     <NavigationBar v-if="menu.navigation" :menu="menu" />
     <main class="content">
-      <template v-for="group in groupedSlot('content')" :key="group.key">
-        <div v-if="group.row" class="element-row" :style="{ '--row-columns': group.elements.length }">
+      <template v-for="group in contentGroups()" :key="group.key">
+        <section v-if="group.accordion" class="accordion" :data-element-id="group.accordion.elementId">
+          <button class="accordion-trigger" type="button" data-menu-control :disabled="group.accordion.data.disabled" :aria-expanded="sectionOpen(group.accordion)" :aria-controls="`accordion-${group.accordion.elementId}`" @click="toggleSection(group.accordion)">
+            <span>{{ group.accordion.data.label }}</span>
+            <span aria-hidden="true">{{ sectionOpen(group.accordion) ? '▾' : '▸' }}</span>
+          </button>
+          <div :id="`accordion-${group.accordion.elementId}`" class="accordion-panel" :hidden="!sectionOpen(group.accordion)">
+            <template v-for="child in group.children" :key="child.key">
+              <div v-if="child.row" class="element-row" :style="{ '--row-columns': child.elements.length }">
+                <ElementRenderer v-for="element in child.elements" :key="element.elementId" :element="element" :menu="menu" :page="page" />
+              </div>
+              <ElementRenderer v-else :element="child.elements[0]" :menu="menu" :page="page" />
+            </template>
+          </div>
+        </section>
+        <div v-else-if="group.row" class="element-row" :style="{ '--row-columns': group.elements.length }">
           <ElementRenderer v-for="element in group.elements" :key="element.elementId" :element="element" :menu="menu" :page="page" />
         </div>
         <ElementRenderer v-else :element="group.elements[0]" :menu="menu" :page="page" />

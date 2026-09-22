@@ -6,13 +6,13 @@ local allowedElementTypes = {
     arrows = true, toggle = true, checkbox = true, dropdown = true,
     gridslider = true, imagebox = true, imageboxcontainer = true,
     pagearrows = true, textdisplay = true, radio = true, number = true,
-    progress = true, spacer = true, colorpicker = true,
+    progress = true, spacer = true, colorpicker = true, accordion = true,
 }
 
 local optionTypes = { arrows = true, dropdown = true, radio = true, colorpicker = true }
 local stringValueTypes = { header = true, subheader = true, textdisplay = true, input = true, textarea = true }
 local numericValueTypes = { slider = true, number = true, progress = true }
-local booleanValueTypes = { toggle = true, checkbox = true }
+local booleanValueTypes = { toggle = true, checkbox = true, accordion = true }
 local slots = { header = true, content = true, footer = true }
 local spacerSizes = { small = true, medium = true, large = true }
 
@@ -405,15 +405,28 @@ local elementFields = {
     arrows = 'value options sound', dropdown = 'value options placeholder emptyText maxVisibleOptions sound',
     radio = 'value options sound', colorpicker = 'value options sound',
     gridslider = 'value maxx maxy step stepx stepy sound', pagearrows = 'current total sound',
-    imagebox = 'value image img alt sound', imageboxcontainer = 'items sound', spacer = 'size',
+    imagebox = 'value image img alt sound', imageboxcontainer = 'items sound', spacer = 'size', accordion = 'value',
 }
 
 function MenuValidation.Element(elementType, spec, path)
     path = path or 'spec'
     local problem = baseElement(elementType, spec, path)
     if problem then return problem end
-    problem = Fields(spec, 'key slot row label disabled persist ' .. elementFields[elementType], path)
+    problem = Fields(spec, 'key slot row label disabled persist section ' .. elementFields[elementType], path)
     if problem then return problem end
+    if spec.section ~= nil then
+        problem = MenuValidation.Id(spec.section, path .. '.section')
+        if problem then return problem end
+        if elementType == 'accordion' or spec.slot == 'header' or spec.slot == 'footer' then
+            return Err(path .. '.section', 'is only allowed on content elements outside an accordion header.')
+        end
+    end
+    if elementType == 'accordion' then
+        if not spec.label or spec.label == '' then return Err(path .. '.label', 'is required.') end
+        if spec.slot == 'header' or spec.slot == 'footer' or spec.row ~= nil then
+            return Err(path, 'accordion must be an ungrouped content element.')
+        end
+    end
     if spec.sound ~= nil then problem = MenuValidation.Sound(spec.sound, path .. '.sound'); if problem then return problem end end
     for _, key in ipairs({ 'alt', 'text', 'emptyText' }) do problem = OptionalString(spec, key, path, 256); if problem then return problem end end
     if spec.maxLength ~= nil then
