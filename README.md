@@ -514,12 +514,24 @@ end)
 
 ### 19. `imagebox` — clickable image
 
-Fields: required `image` (or supported alias `img`), optional `alt` (max 256 bytes), optional `value`, optional `sound`. `label` appears beneath the image. Callback: `activate` with the configured value.
+Fields: required `image` (or supported alias `img`), optional `alt` (max 256 bytes), optional `value`, optional `sound`, and the image presentation fields below. `label` appears beneath the image. Callback: `activate` with the configured value.
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `width` | Existing responsive width | Bounded `px`, `rem`, `%`, `vw`, or `vh` length, or `auto`. |
+| `height` | Existing maximum of `5rem` | Bounded length using the same units, or `auto`. |
+| `aspectRatio` | Natural image ratio | A positive ratio such as `'16/9'`, with each side no greater than 100. |
+| `objectFit` | Browser default | `'cover'`, `'contain'`, `'fill'`, `'none'`, or `'scale-down'`. |
+
+`width` and `height` resize the image inside its clickable box. The box continues to provide its border, background, label, focus state, and click target. When either dimension or `aspectRatio` is supplied, the original `5rem` image-height limit is removed. The menu still limits the image to the available horizontal space.
+
+Use `objectFit = 'cover'` for equally sized thumbnails that may crop at the edges. Use `contain` when the entire image must remain visible. `aspectRatio` is most useful with one dimension—for example, `width = '100%'` and `aspectRatio = '16/9'`. When both `width` and `height` are supplied, those dimensions determine the displayed area.
 
 ```lua
 Add('imagebox', {
     key = 'horse', label = 'View horse', alt = 'Brown horse', value = 'horse-1',
     image = 'https://cfx-nui-my-feather-resource/images/horse.png',
+    width = '16rem', height = '10rem', aspectRatio = '8/5', objectFit = 'cover',
 }, function(event)
     print('Selected:', event.value)
 end)
@@ -531,20 +543,30 @@ Only relative paths and `https://cfx-nui-RESOURCE/path` are accepted; no remote,
 
 ### 20. `imageboxcontainer` — clickable image grid
 
-Fields: required `items` (sequential array of 1–100 children), optional `sound`. Each child accepts optional `key`, required unique scalar `value`, optional `label`, required `image` (or `img`), optional `alt`, and optional `disabled`. Images use the same asset rules as imagebox. A disabled container disables every child.
+Fields: required `items` (sequential array of 1–100 children), optional `sound`. Each child accepts optional `key`, required unique scalar `value`, optional `label`, required `image` (or `img`), optional `alt`, optional `disabled`, and the same `width`, `height`, `aspectRatio`, and `objectFit` image presentation fields as `imagebox`. Images use the same asset rules as imagebox. A disabled container disables every child.
 
 Callback: `child` with the child's value and `event.meta.child`, a defensive copy of the registered child definition.
 
 ```lua
 Add('imageboxcontainer', {
     key = 'horses', items = {
-        { key = 'brown', value = 'brown', label = 'Brown', image = 'https://cfx-nui-my-feather-resource/images/brown.png' },
-        { key = 'white', value = 'white', label = 'White', image = 'https://cfx-nui-my-feather-resource/images/white.png' },
+        {
+            key = 'brown', value = 'brown', label = 'Brown',
+            image = 'https://cfx-nui-my-feather-resource/images/brown.png',
+            width = '100%', height = '7rem', objectFit = 'cover',
+        },
+        {
+            key = 'white', value = 'white', label = 'White',
+            image = 'https://cfx-nui-my-feather-resource/images/white.png',
+            width = '100%', height = '7rem', objectFit = 'contain',
+        },
     },
 }, function(event)
     print('Horse:', event.value, event.meta.child.label)
 end)
 ```
+
+Sizing is configured per child, so a container can mix presentation when needed. For a uniform gallery, give every child the same dimensions and `objectFit`. Omit all four presentation fields to retain the original responsive image-grid appearance.
 
 ### 21. `progress` — read-only progress bar
 

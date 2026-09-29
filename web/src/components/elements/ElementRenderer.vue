@@ -69,6 +69,16 @@
   function pageArrow(direction) {
     emit(direction < 0 ? "previous" : "next", direction);
   }
+  function imageStyle(item) {
+    const customSize = item.width !== undefined || item.height !== undefined || item.aspectRatio !== undefined;
+    return {
+      width: item.width,
+      height: item.height,
+      aspectRatio: item.aspectRatio?.replace('/', ' / '),
+      objectFit: item.objectFit,
+      maxHeight: customSize ? 'none' : undefined,
+    };
+  }
   function gridValue(event) {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
@@ -288,7 +298,7 @@
       :disabled="data.disabled"
       @click="emit('activate', data.value)"
     >
-      <img :src="data.image || data.img" :alt="data.alt || data.label || ''" /><span>{{ data.label }}</span>
+      <img :src="data.image || data.img" :alt="data.alt || data.label || ''" :style="imageStyle(data)" /><span>{{ data.label }}</span>
     </button>
 
     <div v-else-if="element.type === 'imageboxcontainer'" class="image-grid">
@@ -300,7 +310,7 @@
         :disabled="data.disabled || item.disabled"
         @click="emit('child', item.value, { child: item })"
       >
-        <img :src="item.image || item.img" :alt="item.alt || item.label || ''" /><span>{{ item.label }}</span>
+        <img :src="item.image || item.img" :alt="item.alt || item.label || ''" :style="imageStyle(item)" /><span>{{ item.label }}</span>
       </button>
     </div>
   </div>

@@ -130,6 +130,22 @@ describe('ElementRenderer interactions', () => {
     }))
   })
 
+  it('applies bounded image presentation fields to boxes and container children', () => {
+    const box = mountElement('imagebox', {
+      image: 'horse.png', width: '12rem', height: '8rem', aspectRatio: '3/2', objectFit: 'cover',
+    })
+    expect(box.get('img').attributes('style')).toContain('width: 12rem')
+    expect(box.get('img').attributes('style')).toContain('height: 8rem')
+    expect(box.get('img').attributes('style')).toContain('aspect-ratio: 3 / 2')
+    expect(box.get('img').attributes('style')).toContain('object-fit: cover')
+
+    const grid = mountElement('imageboxcontainer', { items: [
+      { value: 'one', image: 'one.png', width: '96px', objectFit: 'contain' },
+    ] })
+    expect(grid.get('img').attributes('style')).toContain('width: 96px')
+    expect(grid.get('img').attributes('style')).toContain('object-fit: contain')
+  })
+
   it('does not activate a disabled button', async () => {
     const wrapper = mountElement('button', { label: 'Disabled', disabled: true })
     await wrapper.get('button').trigger('click')
