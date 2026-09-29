@@ -15,6 +15,7 @@ local numericValueTypes = { slider = true, number = true, progress = true }
 local booleanValueTypes = { toggle = true, checkbox = true, accordion = true }
 local slots = { header = true, content = true, footer = true }
 local spacerSizes = { small = true, medium = true, large = true }
+local imageObjectFits = { cover = true, contain = true, fill = true, none = true, ['scale-down'] = true }
 
 local function Err(path, message, details)
     details = details or {}
@@ -405,8 +406,29 @@ local elementFields = {
     arrows = 'value options sound', dropdown = 'value options placeholder emptyText maxVisibleOptions sound',
     radio = 'value options sound', colorpicker = 'value options sound',
     gridslider = 'value maxx maxy step stepx stepy sound', pagearrows = 'current total sound',
-    imagebox = 'value image img alt sound', imageboxcontainer = 'items sound', spacer = 'size', accordion = 'value',
+    imagebox = 'value image img alt width height aspectRatio objectFit sound', imageboxcontainer = 'items sound', spacer = 'size', accordion = 'value',
 }
+
+local function ImageSizing(spec, path)
+    local problem
+    for _, key in ipairs({ 'width', 'height' }) do
+        if spec[key] ~= nil then
+            problem = Length(spec[key], path .. '.' .. key, true)
+            if problem then return problem end
+        end
+    end
+    if spec.objectFit ~= nil and not imageObjectFits[spec.objectFit] then
+        return Err(path .. '.objectFit', 'must be cover, contain, fill, none, or scale-down.')
+    end
+    if spec.aspectRatio ~= nil then
+        if type(spec.aspectRatio) ~= 'string' then return Err(path .. '.aspectRatio', 'must be a ratio such as 16/9.') end
+        local width, height = spec.aspectRatio:match('^(%d+%.?%d*)/(%d+%.?%d*)$')
+        width, height = tonumber(width), tonumber(height)
+        if not width or not height or width <= 0 or height <= 0 or width > 100 or height > 100 then
+            return Err(path .. '.aspectRatio', 'must contain positive values no greater than 100, such as 16/9.')
+        end
+    end
+end
 
 function MenuValidation.Element(elementType, spec, path)
     path = path or 'spec'
@@ -437,6 +459,7 @@ function MenuValidation.Element(elementType, spec, path)
     if spec.rows ~= nil and (not MenuValidation.Finite(spec.rows) or spec.rows % 1 ~= 0 or spec.rows < 1 or spec.rows > 20) then return Err(path .. '.rows', 'must be an integer from 1 through 20.') end
     for _, key in ipairs({ 'image', 'img' }) do if spec[key] ~= nil then problem = Asset(spec[key], path .. '.' .. key); if problem then return problem end end end
     if elementType == 'imagebox' and not spec.image and not spec.img then return Err(path .. '.image', 'is required.') end
+    if elementType == 'imagebox' then problem = ImageSizing(spec, path); if problem then return problem end end
     if elementType == 'gridslider' then problem = Fields(spec.value, 'x y', path .. '.value'); if problem then return problem end end
     if optionTypes[elementType] then
         for index, option in ipairs(spec.options) do
@@ -454,7 +477,7 @@ function MenuValidation.Element(elementType, spec, path)
         local identities = { string = {}, number = {}, boolean = {} }
         for index, item in ipairs(spec.items) do
             local itemPath = path .. '.items.' .. index
-            problem = Fields(item, 'key value label image img alt disabled', itemPath)
+            problem = Fields(item, 'key value label image img alt disabled width height aspectRatio objectFit', itemPath)
                 or OptionalString(item, 'alt', itemPath, 256)
             if problem then return problem end
             if item.key ~= nil then problem = MenuValidation.Id(item.key, itemPath .. '.key'); if problem then return problem end end
@@ -464,6 +487,7 @@ function MenuValidation.Element(elementType, spec, path)
             identities[kind][item.value] = true
             if not item.image and not item.img then return Err(itemPath .. '.image', 'is required.') end
             for _, key in ipairs({ 'image', 'img' }) do if item[key] then problem = Asset(item[key], itemPath .. '.' .. key); if problem then return problem end end end
+            problem = ImageSizing(item, itemPath); if problem then return problem end
         end
     end
     return MenuValidation.Bytes(spec, path)

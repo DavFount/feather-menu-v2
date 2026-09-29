@@ -59,6 +59,12 @@ Invalid(MenuValidation.Menu({ key = 'menu', theme = { background = 'url(https://
 Valid(MenuValidation.Menu({ key = 'menu', size = { width = '32rem', breakpoints = { ['720'] = '25rem' } }, theme = { background = 'rgba(22, 17, 14, .96)' } }, 'spec', true), 'bounded style tokens')
 Invalid(MenuValidation.Element('imagebox', { key = 'image', image = 'https://example.com/image.png' }), 'invalid_input', 'remote image rejected')
 Valid(MenuValidation.Element('imagebox', { key = 'image', image = 'https://cfx-nui-my-resource/images/icon.png' }), 'local Cfx image')
+Valid(MenuValidation.Element('imagebox', { key = 'image-sized', image = 'images/icon.png', width = '12rem', height = '8rem', aspectRatio = '3/2', objectFit = 'cover' }), 'bounded image sizing')
+Invalid(MenuValidation.Element('imagebox', { key = 'image-css', image = 'images/icon.png', width = 'calc(100% - 1rem)' }), 'invalid_input', 'arbitrary image sizing rejected')
+Invalid(MenuValidation.Element('imagebox', { key = 'image-fit', image = 'images/icon.png', objectFit = 'initial' }), 'invalid_input', 'unknown image fit rejected')
+Valid(MenuValidation.Element('imageboxcontainer', { key = 'image-grid', items = {
+    { value = 'one', image = 'images/one.png', width = '96px', height = '72px', objectFit = 'contain' },
+} }), 'image child sizing')
 Valid(MenuValidation.Element('dropdown', { key = 'bool', value = false, options = { { value = false, label = 'No' }, { value = true, label = 'Yes' } } }), 'false option values')
 Invalid(MenuValidation.Element('dropdown', { key = 'duplicates', value = 1, options = { 1, 1.0 } }), 'invalid_input', 'integer and float representations are the same choice')
 Invalid(MenuValidation.Element('textarea', { key = 'bio', value = 'too long', maxLength = 3 }), 'invalid_input', 'text length enforced')
